@@ -93,8 +93,6 @@ export function UpdateProfileDialog() {
     }
   }
 
-  setSelectedState(profile?.currentState ?? "")
-
   return (
     <DialogContent className="rounded-lg shadow-lg p-6">
       <DialogHeader>
