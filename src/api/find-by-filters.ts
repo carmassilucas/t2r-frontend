@@ -1,9 +1,9 @@
 import { api } from "@/lib/axios";
 
 export interface FindByFiltersBody {
-  currentState: string | null,
-  currentCity: string | null,
-  name: string | null
+  currentState: string | null;
+  currentCity: string | null;
+  name: string | null;
 }
 
 export interface FindByFiltersResponse {
@@ -22,17 +22,11 @@ export interface FindByFiltersResponse {
 export async function findInterlocutorsByFilter({
   currentState,
   currentCity,
-  name
+  name,
 }: FindByFiltersBody) {
-  const data = (await api.get<FindByFiltersResponse>("/interlocutor", {
-    params: {
-      currentState,
-      currentCity,
-      name
-    }
+  return (await api.post<FindByFiltersResponse[]>("/interlocutor/search", {
+    currentState,
+    currentCity,
+    name,
   })).data;
-
-  console.log(data)
-
-  return 
 }

@@ -1,80 +1,140 @@
+import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import LocationContext from "@/contexts/LocationContext";
-import { useContext, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { X } from "lucide-react";
-import { z } from "zod";
-import { findInterlocutorsByFilter } from "@/api/find-by-filters"
+import { MessageSquare, X } from "lucide-react";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
-
-const searchForm = z.object({
-  currentState: z.string(),
-  currentCity: z.string(),
-  name: z.string(),
-})
-
-type SearchForm = z.infer<typeof searchForm>
+import { FindByFiltersResponse, findInterlocutorsByFilter } from "@/api/find-by-filters";
 
 export function Search() {
-  const { register, handleSubmit, setValue, formState: { isSubmitting } } = useForm<SearchForm>()
-  const { cities, states, selectedState, setSelectedState } = useContext(LocationContext)
+  const { register, setValue, watch } = useForm();
+  const { cities, states, selectedState, setSelectedState } = useContext(LocationContext);
+  const [interlocutors, setInterlocutors] = useState<FindByFiltersResponse[]>([]);
   const [searchName, setSearchName] = useState<string>("");
+  const [resetKey, setResetKey] = useState("");
 
   const { mutateAsync: search } = useMutation({
-    mutationFn: findInterlocutorsByFilter
-  })
+    mutationFn: findInterlocutorsByFilter,
+  });
 
-  async function handleSearch(data: SearchForm) {
-    const interlocutors = await search({
-      currentState: data.currentState ? data.currentState : null,
-      currentCity: data.currentCity ? data.currentCity : null,
-      name: data.name ? data.name : null
-    })
-  }
+  const stateFilter = watch("currentState");
+  const cityFilter = watch("currentCity");
+
+  const fetchInterlocutors = async () => {
+    const filters: any = {};
+
+    if (stateFilter) filters.currentState = stateFilter;
+    if (cityFilter) filters.currentCity = cityFilter;
+    if (searchName) filters.name = searchName;
+
+    const results = await search(filters);
+    setInterlocutors(results || []);
+  };
+
+  useEffect(() => {
+    fetchInterlocutors();
+  }, []);
+
+  useEffect(() => {
+    fetchInterlocutors();
+  }, [stateFilter, cityFilter, searchName]);
 
   return (
     <>
       <Helmet title="Procurar Pessoas" />
       <div className="w-full flex justify-center p-4">
         <div className="w-full md:w-2/3">
-          {/* Filtros */}
           <div className="flex items-center mb-6 space-x-4">
             <div className="w-24">
-              <Select {...register('currentState')} onValueChange={value => {
-                setSelectedState(value)
-                setValue('currentState', value)
+              <Select key={`state-${resetKey}`} {...register("currentState")} onValueChange={(value: string) => {
+                setSelectedState(value);
+                setValue("currentState", value);
               }}>
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Estado" />
                 </SelectTrigger>
                 <SelectContent>
-                  {states.map(state => (<SelectItem key={state.sigla} value={state.sigla}>{state.sigla}</SelectItem>))}
+                  {states.map((state) => (
+                    <SelectItem key={state.sigla} value={state.sigla}>
+                      {state.sigla}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
 
             <div className="w-64">
-              <Select {...register('currentCity')} onValueChange={value => {
-                setValue('currentCity', value)
-              }}>
+              <Select key={`city-${resetKey}`} {...register("currentCity")} disabled={!selectedState}
+                onValueChange={(value: string) => {
+                  setValue("currentCity", value);
+                }}
+              >
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Cidade" />
                 </SelectTrigger>
                 <SelectContent>
-                  { cities.map(city => (<SelectItem key={city.nome} value={city.nome}>{city.nome}</SelectItem>)) }
+                  {cities.map((city) => (
+                    <SelectItem key={city.nome} value={city.nome}>
+                      {city.nome}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
 
-            <Input className="w-96" value={searchName} onChange={(e) => setSearchName(e.target.value)} placeholder="Nome"/>
+            <Input className="w-96" value={searchName} onChange={(e) => setSearchName(e.target.value)} placeholder="Nome" />
 
-            <Button variant="ghost" className="p-2" aria-label="Limpar Filtros">
+            <Button variant="ghost" className="p-2" aria-label="Limpar Filtros" onClick={() => {
+              setValue("currentState", "");
+              setValue("currentCity", "");
+              setSearchName("");
+              setSelectedState("")
+              setResetKey((prev) => prev + 1);
+            }}>
               <X className="w-5 h-5" />
             </Button>
           </div>
+
+          <ScrollArea className="h-[850px] pr-2.5 overflow-y-auto">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {interlocutors && interlocutors.length > 0 ? (
+                interlocutors.map((user) => (
+                  <Card key={user.id} className="relative p-4 flex flex-col max-h-96 space-y-4">
+                    <div className="flex items-center space-x-4">
+                      <Avatar className="w-16 h-16">
+                        <AvatarImage src={user.profilePicture ?? ""} alt={`${user.name} Avatar`} />
+                        <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <h2 className="text-xl font-semibold">{user.name}</h2>
+                        <p className="text-muted-foreground">
+                          {user.currentState}, {user.currentCity}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex-1">
+                      <ScrollArea className="h-32 overflow-y-auto">
+                        <p className="text-muted-foreground">{user.aboutMe}</p>
+                      </ScrollArea>
+                    </div>
+                    <Button className="self-end mt-auto p-2 rounded-full" variant="outline" size="icon" aria-label="Iniciar Chat">
+                      <MessageSquare className="w-4 h-4" />
+                    </Button>
+                  </Card>
+                ))
+              ) : (
+                <p className="text-center text-muted-foreground col-span-full">
+                  Nenhum perfil encontrado.
+                </p>
+              )}
+            </div>
+          </ScrollArea>
         </div>
       </div>
     </>
