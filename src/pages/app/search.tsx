@@ -11,8 +11,11 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { FindByFiltersResponse, findInterlocutorsByFilter } from "@/api/find-by-filters";
+import { createChat } from "@/api/create-chat";
+import { useNavigate } from "react-router-dom";
 
 export function Search() {
+  const navigate = useNavigate();
   const { register, setValue, watch } = useForm();
   const { cities, states, selectedState, setSelectedState } = useContext(LocationContext);
   const [interlocutors, setInterlocutors] = useState<FindByFiltersResponse[]>([]);
@@ -21,6 +24,10 @@ export function Search() {
 
   const { mutateAsync: search } = useMutation({
     mutationFn: findInterlocutorsByFilter,
+  });
+
+  const { mutateAsync: create } = useMutation({
+    mutationFn: createChat,
   });
 
   const stateFilter = watch("currentState");
@@ -44,6 +51,11 @@ export function Search() {
   useEffect(() => {
     fetchInterlocutors();
   }, [stateFilter, cityFilter, searchName]);
+
+  const handleStartConversation = async (id : string) => {
+    const chatId = await create({ id })
+    navigate(`/${chatId}`);
+  };
 
   return (
     <>
@@ -123,7 +135,13 @@ export function Search() {
                         <p className="text-muted-foreground">{user.aboutMe}</p>
                       </ScrollArea>
                     </div>
-                    <Button className="self-end mt-auto p-2 rounded-full" variant="outline" size="icon" aria-label="Iniciar Chat">
+                    <Button
+                      className="self-end mt-auto p-2 rounded-full"
+                      variant="outline"
+                      size="icon"
+                      aria-label="Iniciar Chat"
+                      onClick={() => handleStartConversation(user.id)}
+                    >
                       <MessageSquare className="w-4 h-4" />
                     </Button>
                   </Card>

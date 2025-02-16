@@ -1,14 +1,8 @@
+import { Chat } from "@/api/find-chats";
 import { Avatar, AvatarImage, AvatarFallback } from "./ui/avatar";
 
-interface Conversation {
-  id: number;
-  name: string;
-  lastMessage: string;
-  email: string;
-}
-
 type ConversationHeaderProps = {
-  selectedConversation: Conversation
+  selectedConversation: Chat
 }
 
 export function ConversationHeader(props: ConversationHeaderProps) {
@@ -16,11 +10,8 @@ export function ConversationHeader(props: ConversationHeaderProps) {
     <div className="flex items-center justify-between px-4 h-16">
       <div className="flex items-center">
         <Avatar>
-          <AvatarImage
-            src={`https://i.pravatar.cc/150?u=${props.selectedConversation.id}`}
-            alt={props.selectedConversation.name}
-          />
-          <AvatarFallback>{props.selectedConversation.name[0]}</AvatarFallback>
+          <AvatarImage src={props.selectedConversation.profilePicture} alt={props.selectedConversation.name}/>
+          <AvatarFallback>{props.selectedConversation.name.charAt(0)}</AvatarFallback>
         </Avatar>
         <div className="ml-3">
           <h3 className="text-lg font-semibold">{props.selectedConversation.name}</h3>
